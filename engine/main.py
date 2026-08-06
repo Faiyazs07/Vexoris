@@ -1,11 +1,11 @@
 import asyncio
-import random
 from fastapi import FastAPI, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
+from engine.mcap_parser import McapLogEngine
+
 
 app = FastAPI(title="Vexoris Telemetry Engine")
 
-# Allow Next.js frontend to communicate with backend
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -14,42 +14,28 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+mcap_engine = McapLogEngine("sample_run_8802.mcap")
+
+
 @app.get("/status")
 def get_status():
     return {
         "engine": "Vexoris Telemetry Ingestion Engine",
         "status": "ONLINE",
         "version": "1.0.4-DEV",
-        "supported_formats": ["MCAP", "ROS2", "CAN_BUS"]
+        "mcap_metadata": mcap_engine.parse_header()
     }
+
 
 @app.websocket("/ws/telemetry")
 async def telemetry_stream(websocket: WebSocket):
     await websocket.accept()
-    timestamp = 14.000
-    
+
     try:
         while True:
-            is_anomaly = timestamp >= 14.020
-            
-            payload = {
-                "timestamp": round(timestamp, 3),
-                "node_id": "MCAP_ROS2_EDGE_8802",
-                "lidar_points": 4000,
-                "model_weight": 0.08 if is_anomaly else 0.98,
-                "glare_index": 0.94 if is_anomaly else round(random.uniform(0.02, 0.06), 2),
-                "status": "CRITICAL_ANOMALY" if is_anomaly else "NOMINAL",
-                "anomaly_detail": "Optical Sensor Saturation at Camera Node #2" if is_anomaly else None
-            }
-            
-            await websocket.send_json(payload)
-            
-            # Step time by 0.002s increments
-            timestamp += 0.002
-            if timestamp > 14.050:
-                timestamp = 14.000
-                
-            # Slower pacing: 0.3s sleep allows clear inspection of state changes
-            await asyncio.sleep(0.3)
+            # Replay stream from MCAP log engine generator
+            for frame in mcap_engine.generate_log_stream(14.000, 14.050):
+                await websocket.send_json(frame)
+                await asyncio.sleep(0.3)  # Readable pacing step
     except Exception as e:
         print(f"WebSocket Client Disconnected: {e}")
