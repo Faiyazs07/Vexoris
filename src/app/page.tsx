@@ -2,7 +2,7 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
-import { AlertTriangle, Activity, CheckCircle, ShieldAlert, FileText, Cpu, Radio } from 'lucide-react';
+import { AlertTriangle, Activity, CheckCircle, ShieldAlert, FileText, Cpu, Radio, Gauge } from 'lucide-react';
 
 interface TelemetryPacket {
   timestamp: number;
@@ -10,6 +10,7 @@ interface TelemetryPacket {
   lidar_points: number;
   model_weight: number;
   glare_index: number;
+  can_bus_brake_pressure_psi?: number;
   status: string;
   anomaly_detail: string | null;
 }
@@ -22,6 +23,7 @@ export default function VexorisWorkspace() {
     lidar_points: 4000,
     model_weight: 0.98,
     glare_index: 0.05,
+    can_bus_brake_pressure_psi: 0,
     status: 'NOMINAL',
     anomaly_detail: null,
   });
@@ -48,9 +50,11 @@ export default function VexorisWorkspace() {
       setTelemetry(packet);
 
       if (targetMeshRef.current && targetMaterialRef.current) {
-        targetMeshRef.current.position.x = (packet.timestamp - 14.00) * 12;
+        targetMeshRef.current.position.set(0, 0, 0);
         const isAnomaly = packet.status === 'CRITICAL_ANOMALY';
         targetMaterialRef.current.color.setHex(isAnomaly ? 0xff0055 : 0x00ff88);
+        const targetScale = isAnomaly ? 1.35 : 1.0;
+        targetMeshRef.current.scale.set(targetScale, targetScale, targetScale);
       }
     };
 
@@ -118,6 +122,7 @@ export default function VexorisWorkspace() {
     const boxGeo = new THREE.BoxGeometry(1.4, 1.4, 1.4);
     const boxMat = new THREE.MeshBasicMaterial({ color: 0x00ff88, wireframe: true });
     const targetMesh = new THREE.Mesh(boxGeo, boxMat);
+    targetMesh.position.set(0, 0, 0);
     scene.add(targetMesh);
 
     targetMeshRef.current = targetMesh;
@@ -127,6 +132,7 @@ export default function VexorisWorkspace() {
     const animate = () => {
       animationFrameId = requestAnimationFrame(animate);
       pointCloud.rotation.y += 0.0005;
+      targetMesh.rotation.y += 0.005;
       renderer.render(scene, camera);
     };
     animate();
@@ -178,6 +184,7 @@ export default function VexorisWorkspace() {
   };
 
   const isAnomaly = telemetry.status === 'CRITICAL_ANOMALY';
+  const brakePsi = telemetry.can_bus_brake_pressure_psi ?? 0;
 
   return (
     <div className="flex flex-col h-screen w-screen bg-[#05070a] text-white font-mono overflow-hidden">
@@ -283,6 +290,29 @@ export default function VexorisWorkspace() {
                   <div
                     className={`h-full transition-all duration-100 ${isAnomaly ? 'bg-[#ff0055]' : 'bg-[#00f0ff]'}`}
                     style={{ width: `${(telemetry?.glare_index ?? 0.05) * 100}%` }}
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* CAN Bus Chassis Telemetry Card */}
+          <div className="bg-[#0f1522] p-4 rounded border border-[#00f0ff22]">
+            <h3 className="text-xs font-bold text-[#00f0ff] uppercase tracking-wider mb-2 flex items-center gap-2">
+              <Gauge className="w-4 h-4" /> CAN Bus Chassis Telemetry
+            </h3>
+            <div className="space-y-3">
+              <div>
+                <div className="flex justify-between text-xs mb-1">
+                  <span className="text-gray-400">Brake Hydraulic Pressure</span>
+                  <span className={brakePsi > 0 ? 'text-[#ff0055] font-bold' : 'text-[#00ff88]'}>
+                    {brakePsi} PSI {brakePsi > 0 ? '[EMERGENCY TRIGGER]' : ''}
+                  </span>
+                </div>
+                <div className="w-full bg-[#1b2333] h-2 rounded overflow-hidden">
+                  <div
+                    className={`h-full transition-all duration-150 ${brakePsi > 0 ? 'bg-[#ff0055]' : 'bg-[#00ff88]'}`}
+                    style={{ width: `${Math.min((brakePsi / 1200) * 100, 100)}%` }}
                   />
                 </div>
               </div>
