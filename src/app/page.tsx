@@ -231,13 +231,13 @@ export default function VexorisWorkspace() {
                 <div className="flex justify-between text-xs mb-1">
                   <span>Vision Model Weight</span>
                   <span className={isAnomaly ? 'text-[#ff0055] font-bold' : 'text-[#00ff88]'}>
-                    {(telemetry.model_weight * 100).toFixed(0)}%
+                    {((telemetry?.model_weight ?? 0.98) * 100).toFixed(0)}%
                   </span>
                 </div>
                 <div className="w-full bg-[#1b2333] h-2 rounded overflow-hidden">
                   <div
                     className={`h-full transition-all duration-100 ${isAnomaly ? 'bg-[#ff0055]' : 'bg-[#00ff88]'}`}
-                    style={{ width: `${telemetry.model_weight * 100}%` }}
+                    style={{ width: `${(telemetry?.model_weight ?? 0.98) * 100}%` }}
                   />
                 </div>
               </div>
@@ -246,13 +246,13 @@ export default function VexorisWorkspace() {
                 <div className="flex justify-between text-xs mb-1">
                   <span>Optical Glare Index</span>
                   <span className={isAnomaly ? 'text-[#ff0055] font-bold' : 'text-gray-400'}>
-                    {telemetry.glare_index.toFixed(2)} {isAnomaly ? '[SATURATED]' : ''}
+                    {(telemetry?.glare_index ?? 0.05).toFixed(2)} {isAnomaly ? '[SATURATED]' : ''}
                   </span>
                 </div>
                 <div className="w-full bg-[#1b2333] h-2 rounded overflow-hidden">
                   <div
                     className={`h-full transition-all duration-100 ${isAnomaly ? 'bg-[#ff0055]' : 'bg-[#00f0ff]'}`}
-                    style={{ width: `${telemetry.glare_index * 100}%` }}
+                    style={{ width: `${(telemetry?.glare_index ?? 0.05) * 100}%` }}
                   />
                 </div>
               </div>
