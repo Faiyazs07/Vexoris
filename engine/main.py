@@ -1,6 +1,5 @@
 import asyncio
 import random
-import time
 from fastapi import FastAPI, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -31,7 +30,6 @@ async def telemetry_stream(websocket: WebSocket):
     
     try:
         while True:
-            # Simulate high-frequency 100Hz telemetry frame
             is_anomaly = timestamp >= 14.020
             
             payload = {
@@ -46,11 +44,12 @@ async def telemetry_stream(websocket: WebSocket):
             
             await websocket.send_json(payload)
             
-            # Step time by 5ms intervals (200 FPS output rate)
-            timestamp += 0.005
-            if timestamp > 14.100:
+            # Step time by 0.002s increments
+            timestamp += 0.002
+            if timestamp > 14.050:
                 timestamp = 14.000
                 
-            await asyncio.sleep(0.05)  # Stream frequency throttle
+            # Slower pacing: 0.3s sleep allows clear inspection of state changes
+            await asyncio.sleep(0.3)
     except Exception as e:
         print(f"WebSocket Client Disconnected: {e}")
