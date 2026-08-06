@@ -1,7 +1,9 @@
 import asyncio
-from fastapi import FastAPI, WebSocket
+from fastapi import Body, FastAPI, Response, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
+from typing import Any, Dict
 from engine.mcap_parser import McapLogEngine
+from engine.report_generator import generate_forensic_pdf
 
 
 app = FastAPI(title="Vexoris Telemetry Engine")
@@ -25,6 +27,23 @@ def get_status():
         "version": "1.0.4-DEV",
         "mcap_metadata": mcap_engine.parse_header()
     }
+
+
+@app.post("/api/v1/export-audit")
+async def export_audit_pdf(telemetry_data: Dict[str, Any] = Body(...)):
+    """Generate a downloadable PDF audit report from active frame telemetry."""
+    pdf_bytes = generate_forensic_pdf(telemetry_data)
+
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": (
+                "attachment; filename="
+                f"Vexoris_Incident_Audit_{telemetry_data.get('node_id', '8802')}.pdf"
+            )
+        },
+    )
 
 
 @app.websocket("/ws/telemetry")

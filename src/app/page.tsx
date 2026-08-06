@@ -28,6 +28,7 @@ export default function VexorisWorkspace() {
 
   const [isConnected, setIsConnected] = useState<boolean>(false);
   const [isLive, setIsLive] = useState<boolean>(true);
+  const [isExporting, setIsExporting] = useState<boolean>(false);
 
   const targetMeshRef = useRef<THREE.Mesh | null>(null);
   const targetMaterialRef = useRef<THREE.MeshBasicMaterial | null>(null);
@@ -146,6 +147,35 @@ export default function VexorisWorkspace() {
       }
     };
   }, []);
+
+  const handleExportPDF = async () => {
+    setIsExporting(true);
+
+    try {
+      const response = await fetch('http://localhost:8000/api/v1/export-audit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(telemetry),
+      });
+
+      if (!response.ok) throw new Error('PDF export failed');
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = `Vexoris_Incident_Audit_${telemetry.node_id}.pdf`;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Export error:', error);
+      alert('Failed to generate audit PDF. Ensure Python backend is running on port 8000.');
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   const isAnomaly = telemetry.status === 'CRITICAL_ANOMALY';
 
@@ -274,9 +304,13 @@ export default function VexorisWorkspace() {
             )}
           </div>
 
-          <button className="w-full py-2.5 bg-[#00f0ff1a] hover:bg-[#00f0ff33] text-[#00f0ff] border border-[#00f0ff55] rounded text-xs font-bold uppercase tracking-wider flex items-center justify-center space-x-2 transition-all">
+          <button
+            onClick={handleExportPDF}
+            disabled={isExporting}
+            className="w-full py-2.5 bg-[#00f0ff1a] hover:bg-[#00f0ff33] text-[#00f0ff] border border-[#00f0ff55] rounded text-xs font-bold uppercase tracking-wider flex items-center justify-center space-x-2 transition-all disabled:opacity-50"
+          >
             <FileText className="w-4 h-4" />
-            <span>Export Incident Audit PDF</span>
+            <span>{isExporting ? 'Generating Audit PDF...' : 'Export Incident Audit PDF'}</span>
           </button>
         </aside>
       </div>
